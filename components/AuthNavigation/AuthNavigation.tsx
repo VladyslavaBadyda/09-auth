@@ -3,7 +3,6 @@
 import Link from "next/link";
 import css from "./AuthNavigation.module.css";
 import { useAuthStore } from "@/lib/store/authStore";
-import { useLogout } from "@/app/hooks/useLogout";
 
 export default function AuthNavigation() {
   const { user, isAuthenticated } = useAuthStore();
