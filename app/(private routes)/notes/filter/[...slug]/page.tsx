@@ -1,3 +1,5 @@
+"use client";
+
 import { fetchNotes } from "@/lib/api";
 import NotesClient from "./Notes.client";
 import { Metadata } from "next";
