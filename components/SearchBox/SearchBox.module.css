@@ -1,10 +1,13 @@
-/* Styles for SearchBox component */
-/* Add your CSS styles here */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .input {
-  flex: 1;
-  max-width: 240px;
-  padding: 6px 12px;
-  font-size: 16px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #fff;
 }
