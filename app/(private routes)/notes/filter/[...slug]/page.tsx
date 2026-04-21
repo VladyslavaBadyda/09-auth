@@ -1,55 +1,40 @@
-import { fetchNotes } from "@/lib/api/clientApi";
-import NotesClient from "./Notes.client";
-import { Metadata } from "next";
+import { redirect } from "next/navigation";
 import {
   dehydrate,
   HydrationBoundary,
   QueryClient,
 } from "@tanstack/react-query";
+import { fetchNotes } from "@/lib/api/serverApi";
+import { Notes } from "./Notes.client";
 
-interface Props {
-  params: Promise<{ slug: string[] }>;
-}
+type FilterSlugPageProps = {
+  params: Promise<{
+    slug?: string[];
+  }>;
+};
 
-export default async function NotesPage({ params }: Props) {
+export default async function FilterSlugPage({ params }: FilterSlugPageProps) {
+  const { slug = [] } = await params;
+  const tag = slug[0] ?? "All";
+
+  if (slug.length > 1) {
+    redirect("/notes");
+  }
+
   const queryClient = new QueryClient();
 
-  const { slug } = await params;
-  const rawTag = slug?.[0];
-  const tag = rawTag === "all" ? undefined : rawTag;
   await queryClient.prefetchQuery({
-    queryKey: ["note", slug],
-    queryFn: () => fetchNotes(tag),
+    queryKey: ["notes", "", tag, 1],
+    queryFn: () => fetchNotes({ tag, page: 1, perPage: 12 }),
   });
 
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <NotesClient tag={tag} />
-    </HydrationBoundary>
+    <main style={{ flex: 1, padding: "32px 0 56px" }}>
+      <div className="container">
+        <HydrationBoundary state={dehydrate(queryClient)}>
+          <Notes initialSearch="" initialTag={tag} page={1} />
+        </HydrationBoundary>
+      </div>
+    </main>
   );
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const rawTag = slug?.[0];
-  const tag = rawTag === "all" ? undefined : rawTag;
-
-  return {
-    title: `Notes filtered by:  ${tag}`,
-    description: `Browse notes filtered by "${tag}" tag. Find relevant notes quickly.`,
-    openGraph: {
-      title: `Notes filtered by:  ${tag}`,
-      description: `Browse notes filtered by "${tag}" tag. Find relevant notes quickly.`,
-      url: "http://localhost:3000",
-      images: [
-        {
-          url: "/notehub-og-meta.jpg",
-          width: 1200,
-          height: 600,
-          alt: "image with app preview",
-        },
-      ],
-      type: "article",
-    },
-  };
 }

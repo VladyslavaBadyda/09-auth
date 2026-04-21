@@ -1,43 +1,44 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { fetchNoteById } from "@/lib/api";
-import css from "./NoteDetails.module.css";
+import { fetchNoteById } from "@/lib/api/clientApi";
+import css from "./page.module.css";
 
-export default function NoteDetailsClient() {
-  const params = useParams();
-  const id = params.id as string;
+type NoteDetailsClientProps = {
+  noteId: string;
+};
 
-  const {
-    data: note,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["note", id],
-    queryFn: () => fetchNoteById(id),
-    refetchOnMount: false,
+export function NoteDetailsClient({ noteId }: NoteDetailsClientProps) {
+  const { data: note, isLoading, isError } = useQuery({
+    queryKey: ["note", noteId],
+    queryFn: () => fetchNoteById(noteId),
   });
 
   if (isLoading) {
-    return <p>Loading, please wait...</p>;
+    return <article className={css.card}>Loading note...</article>;
   }
 
-  if (error || !note) {
-    return <p>Something went wrong.</p>;
+  if (isError) {
+    return <article className={css.card}>Failed to load note.</article>;
+  }
+
+  if (!note) {
+    return <article className={css.card}>Note not found.</article>;
   }
 
   return (
-    <div className={css.container}>
-      <div className={css.item}>
-        <div className={css.header}>
-          <h2>{note.title}</h2>
-        </div>
-
-        <p className={css.tag}>{note.tag}</p>
-        <p className={css.content}>{note.content}</p>
-        <p className={css.date}>{note.createdAt}</p>
-      </div>
-    </div>
+    <article className={css.card}>
+      <span className={css.tag}>{note.tag}</span>
+      <h1 className={css.title}>{note.title}</h1>
+      <p className={css.meta}>
+        Created: {new Date(note.createdAt).toLocaleString()} | Updated:{" "}
+        {new Date(note.updatedAt).toLocaleString()}
+      </p>
+      <div className={css.content}>{note.content || "No content provided."}</div>
+      <Link href="/notes" className={css.backLink}>
+        Back to notes
+      </Link>
+    </article>
   );
 }

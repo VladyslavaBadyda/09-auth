@@ -1,15 +1,18 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default function AuthLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const isLoggedIn = false; // тут буде перевірка cookie
+import { useEffect, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
-  if (isLoggedIn) {
-    redirect("/profile");
-  }
+type AuthLayoutProps = Readonly<{
+  children: ReactNode;
+}>;
 
-  return <>{children}</>;
+export default function AuthLayout({ children }: AuthLayoutProps) {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.refresh();
+  }, [router]);
+
+  return children;
 }

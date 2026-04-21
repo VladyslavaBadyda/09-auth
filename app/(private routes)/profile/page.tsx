@@ -1,29 +1,25 @@
-import css from "./ProfilePage.module.css";
-import Link from "next/link";
+import type { Metadata } from "next";
 import Image from "next/image";
-import { Metadata } from "next";
-import { getMe } from "@/lib/api/clientApi";
+import Link from "next/link";
+import css from "./ProfilePage.module.css";
+import { getMe } from "@/lib/api/serverApi";
 
 export const metadata: Metadata = {
-  title: "Profile Page",
-  description: "User profile page with personal information",
+  title: "Profile",
+  description: "View your NoteHub profile details and manage your account.",
+  robots: {
+    index: false,
+    follow: false,
+  },
   openGraph: {
-    title: "Profile Page",
-    description: "View and edit your profile information",
-    url: "https://09-auth-blush-eight.vercel.app/profile",
-    images: [
-      {
-        url: "/notehub-og-meta.jpg",
-        width: 1200,
-        height: 600,
-        alt: "image with app preview",
-      },
-    ],
+    title: "Profile",
+    description: "View your NoteHub profile details and manage your account.",
   },
 };
 
-export default function Profile() {
-  const user = getMe();
+export default async function ProfilePage() {
+  const user = await getMe();
+
   return (
     <main className={css.mainContent}>
       <div className={css.profileCard}>
@@ -35,7 +31,7 @@ export default function Profile() {
         </div>
         <div className={css.avatarWrapper}>
           <Image
-            src="Avatar"
+            src={user.avatar}
             alt="User Avatar"
             width={120}
             height={120}
@@ -43,8 +39,8 @@ export default function Profile() {
           />
         </div>
         <div className={css.profileInfo}>
-          <p>Username: { }</p>
-          <p>Email: your_email@example.com</p>
+          <p>Username: {user.username}</p>
+          <p>Email: {user.email}</p>
         </div>
       </div>
     </main>

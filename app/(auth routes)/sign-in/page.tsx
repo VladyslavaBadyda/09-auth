@@ -1,39 +1,47 @@
 "use client";
-import { useState } from "react";
-import { login } from "@/lib/api/clientApi";
+
+import { useState, type FormEvent } from "react";
+import { startTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
+import css from "./SignInPage.module.css";
+import { getErrorMessage, login } from "@/lib/api/clientApi";
 import { useAuthStore } from "@/lib/store/authStore";
 
-import css from "./SignInPage.module.css";
-import axios from "axios";
-
-export default function SingIn() {
+export default function SignInPage() {
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
   const [error, setError] = useState("");
 
-  async function handlesubmit(formData: FormData) {
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-
-    try {
-      const user = await login({ email, password });
+  const loginMutation = useMutation({
+    mutationFn: login,
+    onSuccess: (user) => {
       setUser(user);
-      router.push("./profile");
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || "Login error");
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Login failed");
-      }
-    }
+      startTransition(() => {
+        router.replace("/profile");
+        router.refresh();
+      });
+    },
+    onError: (mutationError) => {
+      setError(getErrorMessage(mutationError));
+    },
+  });
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+
+    const formData = new FormData(event.currentTarget);
+
+    loginMutation.mutate({
+      email: String(formData.get("email") ?? ""),
+      password: String(formData.get("password") ?? ""),
+    });
   }
 
   return (
     <main className={css.mainContent}>
-      <form className={css.form} action={handlesubmit}>
+      <form className={css.form} onSubmit={handleSubmit}>
         <h1 className={css.formTitle}>Sign in</h1>
 
         <div className={css.formGroup}>
@@ -59,8 +67,12 @@ export default function SingIn() {
         </div>
 
         <div className={css.actions}>
-          <button type="submit" className={css.submitButton}>
-            Log in
+          <button
+            type="submit"
+            className={css.submitButton}
+            disabled={loginMutation.isPending}
+          >
+            {loginMutation.isPending ? "Logging in..." : "Log in"}
           </button>
         </div>
 

@@ -1,52 +1,97 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { api } from "@/lib/api/api";
+import css from "./AuthProvider.module.css";
+import { checkSession, getMe, logout } from "@/lib/api/clientApi";
+import { useAuthStore } from "@/lib/store/authStore";
 
-const PRIVATE_ROUTES = ["/profile"];
+type AuthProviderProps = Readonly<{
+    children: ReactNode;
+}>;
 
-export default function AuthProvider({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+const PRIVATE_ROUTES = ["/profile", "/notes"];
+
+export function AuthProvider({ children }: AuthProviderProps) {
     const pathname = usePathname();
     const router = useRouter();
-
-    const [loading, setLoading] = useState(true);
-    const [isAuth, setIsAuth] = useState(false);
+    const [isChecking, setIsChecking] = useState(true);
+    const setUser = useAuthStore((state) => state.setUser);
+    const clearIsAuthenticated = useAuthStore(
+        (state) => state.clearIsAuthenticated,
+    );
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
     useEffect(() => {
-        const checkAuth = async () => {
+        router.refresh();
+    }, [router]);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        async function syncAuthState() {
+            setIsChecking(true);
+
             try {
-                const res = await api.get("/auth/session", {
-                    params: {
-                        credentials: "include",
-                    },
-                });
+                const session = await checkSession();
 
-                setIsAuth(true);
+                if (!session.success) {
+                    throw new Error("No active session");
+                }
+
+                const user = await getMe();
+
+                if (!isMounted) {
+                    return;
+                }
+
+                setUser(user);
             } catch {
-                setIsAuth(false);
+                if (!isMounted) {
+                    return;
+                }
+
+                clearIsAuthenticated();
+
+                const isPrivateRoute = PRIVATE_ROUTES.some((route) =>
+                    pathname.startsWith(route),
+                );
+
+                if (isPrivateRoute) {
+                    try {
+                        await logout();
+                    } catch {
+                        // Ignore logout failures when the session is already invalid.
+                    }
+
+                    router.replace("/sign-in");
+                    return;
+                }
             } finally {
-                setLoading(false);
+                if (isMounted) {
+                    setIsChecking(false);
+                }
             }
+        }
+
+        void syncAuthState();
+
+        return () => {
+            isMounted = false;
         };
+    }, [pathname, router, setUser, clearIsAuthenticated]);
 
-        checkAuth();
-    }, [pathname]);
+    const isPrivateRoute = PRIVATE_ROUTES.some((route) =>
+        pathname.startsWith(route),
+    );
 
-    const isPrivate = PRIVATE_ROUTES.some((route) => pathname.startsWith(route));
-
-    if (loading) {
-        return <p>Loading...</p>;
+    if (isPrivateRoute && (isChecking || !isAuthenticated)) {
+        return (
+            <div className={css.overlay}>
+                <div className={css.loader}>Checking your session...</div>
+            </div>
+        );
     }
 
-    if (!isAuth && isPrivate) {
-        router.push("/sign-in");
-        return null;
-    }
-
-    return <>{children}</>;
+    return children;
 }

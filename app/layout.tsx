@@ -1,52 +1,37 @@
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
-import "./globals.css";
-import Footer from "@/components/Footer/Footer";
-import Header from "@/components/Header/Header";
-import TanStackProvider from "@/components/TanStackProvider/TanStackProvider";
-import AuthProvider from "@/components/AuthProvider/AuthProvider";
-
-const roboto = Roboto({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-roboto",
-  display: "swap",
-});
+import type { ReactNode } from "react";
+import "@/app/globals.css";
+import { Header } from "@/components/Header/Header";
+import { Footer } from "@/components/Footer/Footer";
+import { AuthProvider } from "@/components/AuthProvider/AuthProvider";
+import { TanStackProvider } from "@/components/TanStackProvider/TanStackProvider";
 
 export const metadata: Metadata = {
-  title: "NoteHub",
-  description: "NoteHub, it's an app for creating your notes",
-  openGraph: {
-    title: "NoteHub",
-    description: "NoteHub, it's an app for creating your notes",
-    url: "https://08-zustand-blush-eight.vercel.app/",
-    images: [
-      {
-        url: "/notehub-og-meta.jpg",
-        width: 1200,
-        height: 600,
-        alt: "image with app preview",
-      },
-    ],
+  title: {
+    default: "NoteHub Auth",
+    template: "%s | NoteHub Auth",
   },
+  description:
+    "A Next.js NoteHub app with protected routes and cookie-based auth.",
 };
 
-export default function RootLayout({
-  children,
-  modal,
-}: Readonly<{
-  children: React.ReactNode;
-  modal: React.ReactNode;
-}>) {
+type RootLayoutProps = Readonly<{
+  children: ReactNode;
+  modal: ReactNode;
+}>;
+
+export default function RootLayout({ children, modal }: RootLayoutProps) {
   return (
-    <html lang="en" className={`${roboto.variable}`}>
-      <body className={roboto.variable}>
+    <html lang="en">
+      <body>
         <TanStackProvider>
           <AuthProvider>
-            <Header></Header>
-            {children}
-            {modal}
-            <Footer></Footer>
+            <div className="app-shell">
+              <Header />
+              {children}
+              {modal}
+              <Footer />
+            </div>
           </AuthProvider>
         </TanStackProvider>
       </body>

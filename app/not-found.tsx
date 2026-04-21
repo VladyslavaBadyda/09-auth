@@ -1,30 +1,46 @@
-import css from "@/app/Home.module.css";
-import { Metadata } from "next";
+import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "Not Found",
-  description: "The page you are looking for could not be found.",
-  openGraph: {
-    title: "Not Found",
-    description: "The page you are looking for could not be found.",
-    url: "https://08-zustand-blush-eight.vercel.app/",
-    images: [
-      {
-        url: "/notehub-og-meta.jpg",
-        width: 1200,
-        height: 600,
-        alt: "image with app preview",
-      },
-    ],
-  },
-};
-export default async function NotFound() {
+export default function NotFound() {
   return (
-    <>
-      <h1 className={css.title}>404 - Page not found</h1>
-      <p className={css.description}>
-        Sorry, the page you are looking for does not exist.
-      </p>
-    </>
+    <main
+      style={{
+        flex: 1,
+        display: "grid",
+        placeItems: "center",
+        padding: "48px 16px",
+      }}
+    >
+      <div
+        style={{
+          width: "min(560px, 100%)",
+          padding: "32px",
+          borderRadius: "24px",
+          background: "rgba(255, 255, 255, 0.95)",
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow)",
+          textAlign: "center",
+        }}
+      >
+        <h1 style={{ margin: 0, fontSize: "2rem" }}>Page not found</h1>
+        <p style={{ margin: "12px 0 0", color: "var(--text-muted)" }}>
+          The page you are looking for does not exist or has been moved.
+        </p>
+        <Link
+          href="/"
+          style={{
+            display: "inline-flex",
+            marginTop: "20px",
+            padding: "12px 18px",
+            borderRadius: "999px",
+            background: "var(--accent)",
+            color: "#fff",
+            textDecoration: "none",
+            fontWeight: 700,
+          }}
+        >
+          Back to home
+        </Link>
+      </div>
+    </main>
   );
 }

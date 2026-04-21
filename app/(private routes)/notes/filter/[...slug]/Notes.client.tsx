@@ -1,67 +1,160 @@
 "use client";
 
-import { fetchNotes } from "@/lib/api/clientApi";
-import NoteList from "@/components/NoteList/NoteList";
-import SearchBox from "@/components/SearchBox/SearchBox";
-import Pagination from "@/components/Pagination/Pagination";
-import { useState } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { useDebouncedCallback } from "use-debounce";
-import css from "./Notes.client.module.css";
-import Loader from "@/app/loading";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { startTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { SearchBox } from "@/components/SearchBox/SearchBox";
+import { NoteList } from "@/components/NoteList/NoteList";
+import { Pagination } from "@/components/Pagination/Pagination";
+import { fetchNotes } from "@/lib/api/clientApi";
+import { useNoteStore } from "@/lib/store/noteStore";
+import type { NoteTag } from "@/types/note";
+import css from "@/components/NotesClient/NotesClient.module.css";
 
-type Props = {
-  tag: string | undefined;
+type NotesProps = {
+  initialSearch: string;
+  initialTag: string;
+  page: number;
 };
 
-export default function NotesClient({ tag }: Props) {
+const tags: NoteTag[] = [
+  "All",
+  "Work",
+  "Personal",
+  "Meeting",
+  "Shopping",
+  "Ideas",
+  "Travel",
+  "Finance",
+  "Health",
+  "Important",
+  "Todo",
+];
+
+export function Notes({ initialSearch, initialTag, page }: NotesProps) {
   const router = useRouter();
-  const [page, setPage] = useState(1);
-  const [query, setQuery] = useState("");
-  const perPage = 12;
+  const search = useNoteStore((state) => state.search);
+  const tag = useNoteStore((state) => state.tag);
+  const currentPage = useNoteStore((state) => state.page);
+  const setSearch = useNoteStore((state) => state.setSearch);
+  const setTag = useNoteStore((state) => state.setTag);
+  const setPage = useNoteStore((state) => state.setPage);
+  const resetFilters = useNoteStore((state) => state.resetFilters);
+  const [searchInput, setSearchInput] = useState(initialSearch);
 
-  const debouncedSearch = useDebouncedCallback((value: string) => {
-    setQuery(value);
-    setPage(1);
-  }, 500);
+  useEffect(() => {
+    router.refresh();
+    setSearch(initialSearch);
+    setTag((initialTag || "All") as NoteTag);
+    setPage(page);
+  }, [initialSearch, initialTag, page, router, setPage, setSearch, setTag]);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["notes", tag, page, query],
-    queryFn: () => fetchNotes(query, page, perPage, tag),
-    placeholderData: keepPreviousData,
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearch(searchInput);
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput, setSearch]);
+
+  const notesQuery = useQuery({
+    queryKey: ["notes", search, tag, currentPage],
+    queryFn: () =>
+      fetchNotes({
+        search,
+        tag,
+        page: currentPage,
+        perPage: 12,
+      }),
   });
 
-  const totalPages = data?.totalPages || 0;
-  const notes = data?.notes || [];
-  function handleChangePage(newPage: number) {
-    setPage(newPage);
+  const notes = notesQuery.data?.notes ?? [];
+  const totalPages = notesQuery.data?.totalPages ?? 1;
+
+  function updateRoute(nextSearch: string, nextTag: string, nextPage: number) {
+    const params = new URLSearchParams();
+
+    if (nextSearch) {
+      params.set("search", nextSearch);
+    }
+
+    if (nextTag && nextTag !== "All") {
+      params.set("tag", nextTag);
+    }
+
+    if (nextPage > 1) {
+      params.set("page", String(nextPage));
+    }
+
+    setPage(nextPage);
+    startTransition(() => {
+      router.push(`/notes${params.toString() ? `?${params.toString()}` : ""}`);
+    });
   }
 
   return (
-    <div className={css.app}>
-      <header className={css.toolbar}>
-        <SearchBox searchText={query} updateSearch={debouncedSearch} />
+    <div className={css.layout}>
+      <section className={css.panel}>
+        <div className={css.filters}>
+          <SearchBox value={searchInput} onChange={setSearchInput} />
 
-        {totalPages > 1 && (
-          <Pagination
-            pageCount={totalPages}
-            currentPage={page}
-            onPageChange={handleChangePage}
-          />
-        )}
+          <label className={css.field}>
+            <span>Tag</span>
+            <select
+              className={css.select}
+              value={tag}
+              onChange={(event) => {
+                const nextTag = event.target.value as NoteTag;
+                setTag(nextTag);
+                updateRoute(search, nextTag, 1);
+              }}
+            >
+              {tags.map((tagOption) => (
+                <option key={tagOption} value={tagOption}>
+                  {tagOption}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <button
-          className={css.button}
-          onClick={() => router.push("/notes/action/create")}
-        >
-          Create note +
-        </button>
-      </header>
+          <div className={css.actions}>
+            <Link href="/notes/action/create" className={css.primaryButton}>
+              Create note
+            </Link>
+            <button
+              type="button"
+              className={css.secondaryButton}
+              onClick={() => {
+                setSearchInput("");
+                resetFilters();
+                updateRoute("", "All", 1);
+              }}
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      </section>
 
-      {isLoading && <Loader />}
-
-      {!isLoading && !isError && <NoteList notes={notes} />}
+      <section className={css.panel}>
+        {notesQuery.isLoading ? <p>Loading notes...</p> : null}
+        {notesQuery.isError ? <p>Failed to load notes.</p> : null}
+        {!notesQuery.isLoading && !notesQuery.isError ? (
+          <>
+            {notes.length ? <NoteList notes={notes} /> : <p>No notes found.</p>}
+            {notes.length ? (
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                onPrevious={() => updateRoute(search, tag, currentPage - 1)}
+                onNext={() => updateRoute(search, tag, currentPage + 1)}
+              />
+            ) : null}
+          </>
+        ) : null}
+      </section>
     </div>
   );
 }

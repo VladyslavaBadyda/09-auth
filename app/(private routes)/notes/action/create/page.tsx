@@ -1,32 +1,25 @@
-import css from "./CreateNote.module.css";
-import NoteForm from "@/components/NoteForm/NoteForm";
-import { Metadata } from "next";
+import { NoteForm } from "@/components/NoteForm/NoteForm";
+import type { NoteTag } from "@/types/note";
 
-export const metadata: Metadata = {
-  title: "CreateNote",
-  description: "Create new note",
-  openGraph: {
-    title: "CreateNote",
-    description: "Create new note",
-    url: "https://08-zustand-blush-eight.vercel.app/notes/action/create",
-    images: [
-      {
-        url: "/notehub-og-meta.jpg",
-        width: 1200,
-        height: 600,
-        alt: "image with app preview",
-      },
-    ],
-    type: "article",
-  },
-};
+const tags: NoteTag[] = [
+  "All",
+  "Work",
+  "Personal",
+  "Meeting",
+  "Shopping",
+  "Ideas",
+  "Travel",
+  "Finance",
+  "Health",
+  "Important",
+  "Todo",
+];
 
-export default function CreateNote() {
+export default function CreateNoteActionPage() {
   return (
-    <main className={css.main}>
-      <div className={css.container}>
-        <h1 className={css.title}>Create note</h1>
-        <NoteForm />
+    <main style={{ flex: 1, padding: "32px 0 56px" }}>
+      <div className="container">
+        <NoteForm tags={tags} />
       </div>
     </main>
   );
