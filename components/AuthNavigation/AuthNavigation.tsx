@@ -1,33 +1,59 @@
 "use client";
 
+import Link from "next/link";
+import css from "./AuthNavigation.module.css";
 import { useAuthStore } from "@/lib/store/authStore";
-import { logout } from "@/lib/api/clientApi";
-import { useRouter } from "next/navigation";
+import { useLogout } from "@/app/hooks/useLogout";
 
 export default function AuthNavigation() {
-  const { isAuthenticated, user, clear } = useAuthStore();
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    await logout();
-    clear();
-    router.push("/sign-in");
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <>
-        <li><a href="/sign-in">Login</a></li>
-        <li><a href="/sign-up">Register</a></li>
-      </>
-    );
-  }
+  const { user, isAuthenticated } = useAuthStore();
+  const { mutate: logout } = useLogout();
 
   return (
     <>
-      <li><a href="/profile">Profile</a></li>
-      <li>{user?.email}</li>
-      <li><button onClick={handleLogout}>Logout</button></li>
+      {isAuthenticated ? (
+        <>
+          <li className={css.navigationItem}>
+            <Link
+              href="/profile"
+              prefetch={false}
+              className={css.navigationLink}
+            >
+              Profile
+            </Link>
+          </li>
+
+          <li className={css.navigationItem}>
+            <p className={css.userEmail}>{user?.email}</p>
+
+            <button onClick={() => logout()} className={css.logoutButton}>
+              Logout
+            </button>
+          </li>
+        </>
+      ) : (
+        <>
+          <li className={css.navigationItem}>
+            <Link
+              href="/app/sing-in"
+              prefetch={false}
+              className={css.navigationLink}
+            >
+              Login
+            </Link>
+          </li>
+
+          <li className={css.navigationItem}>
+            <Link
+              href="/sing-up"
+              prefetch={false}
+              className={css.navigationLink}
+            >
+              Sign up
+            </Link>
+          </li>
+        </>
+      )}
     </>
   );
 }
