@@ -1,48 +1,45 @@
 import css from "./page.module.css";
-import Image from "next/image";
-import { getMe } from "@/lib/api/serverApi";
-import { updateMe } from "@/lib/api/clientApi";
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from "@tanstack/react-query";
+import { fetchNotes } from "@/lib/api/serverApi";
+import { NotesClient } from "@/components/NotesClient/NotesClient";
 
-export default async function EditProfilePage() {
-  const user = await getMe();
+type NotesPageProps = {
+  searchParams: Promise<{
+    search?: string;
+    page?: string;
+    tag?: string;
+  }>;
+};
 
-  async function handleSubmit(formData: FormData) {
-    "use server";
+export default async function NotesPage({ searchParams }: NotesPageProps) {
+  const params = await searchParams;
+  const search = params.search ?? "";
+  const tag = params.tag ?? "All";
+  const page = Number(params.page ?? "1");
+  const queryClient = new QueryClient();
 
-    const username = String(formData.get("username"));
-
-    await updateMe({
-      username,
-    });
-  }
+  await queryClient.prefetchQuery({
+    queryKey: ["notes", search, tag, page],
+    queryFn: () => fetchNotes({ search, tag, page, perPage: 12 }),
+  });
 
   return (
     <main className={css.main}>
-      <h1>Edit profile</h1>
-
-      <div className={css.card}>
-        <Image
-          src={user.avatar}
-          alt={user.username}
-          width={120}
-          height={120}
-        />
-
-        <p>{user.email}</p>
-
-        <form action={handleSubmit} className={css.form}>
-          <label>
-            Name
-            <input
-              type="text"
-              name="username"
-              defaultValue={user.username}
-              required
-            />
-          </label>
-
-          <button type="submit">Save</button>
-        </form>
+      <div className="container">
+        <div className={css.header}>
+          <h1 className={css.title}>Your Notes</h1>
+          <p className={css.subtitle}>
+            Browse, create, filter, and delete notes inside your protected
+            workspace.
+          </p>
+        </div>
+        <HydrationBoundary state={dehydrate(queryClient)}>
+          <NotesClient initialSearch={search} initialTag={tag} page={page} />
+        </HydrationBoundary>
       </div>
     </main>
   );
