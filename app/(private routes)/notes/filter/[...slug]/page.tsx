@@ -5,7 +5,7 @@ import {
   QueryClient,
 } from "@tanstack/react-query";
 import { fetchNotes } from "@/lib/api/serverApi";
-import { Notes } from "./Notes.client";
+import NotesClient from "./Notes.client";
 
 type FilterSlugPageProps = {
   params: Promise<{
@@ -32,7 +32,7 @@ export default async function FilterSlugPage({ params }: FilterSlugPageProps) {
     <main style={{ flex: 1, padding: "32px 0 56px" }}>
       <div className="container">
         <HydrationBoundary state={dehydrate(queryClient)}>
-          <Notes initialSearch="" initialTag={tag} page={1} />
+          <NotesClient initialSearch="" initialTag={tag} initialPage={1} />
         </HydrationBoundary>
       </div>
     </main>

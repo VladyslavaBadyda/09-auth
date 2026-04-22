@@ -2,159 +2,76 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { startTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { SearchBox } from "@/components/SearchBox/SearchBox";
+import SearchBox from "@/components/SearchBox/SearchBox";
 import { NoteList } from "@/components/NoteList/NoteList";
 import { Pagination } from "@/components/Pagination/Pagination";
 import { fetchNotes } from "@/lib/api/clientApi";
-import { useNoteStore } from "@/lib/store/noteStore";
 import type { NoteTag } from "@/types/note";
-import css from "@/components/NotesClient/NotesClient.module.css";
 
-type NotesProps = {
-  initialSearch: string;
-  initialTag: string;
-  page: number;
+type NotesClientProps = {
+  initialSearch?: string;
+  initialTag?: string;
+  initialPage?: number;
 };
 
-const tags: NoteTag[] = [
-  "All",
-  "Work",
-  "Personal",
-  "Meeting",
-  "Shopping",
-  "Ideas",
-  "Travel",
-  "Finance",
-  "Health",
-  "Important",
-  "Todo",
-];
-
-export function Notes({ initialSearch, initialTag, page }: NotesProps) {
-  const router = useRouter();
-  const search = useNoteStore((state) => state.search);
-  const tag = useNoteStore((state) => state.tag);
-  const currentPage = useNoteStore((state) => state.page);
-  const setSearch = useNoteStore((state) => state.setSearch);
-  const setTag = useNoteStore((state) => state.setTag);
-  const setPage = useNoteStore((state) => state.setPage);
-  const resetFilters = useNoteStore((state) => state.resetFilters);
+export default function NotesClient({
+  initialSearch = "",
+  initialTag = "All",
+  initialPage = 1,
+}: NotesClientProps) {
   const [searchInput, setSearchInput] = useState(initialSearch);
+  const [search, setSearch] = useState(initialSearch);
+  const [page, setPage] = useState(initialPage);
+
+  const tag = initialTag;
 
   useEffect(() => {
-    router.refresh();
-    setSearch(initialSearch);
-    setTag((initialTag || "All") as NoteTag);
-    setPage(page);
-  }, [initialSearch, initialTag, page, router, setPage, setSearch, setTag]);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
+    const timer = setTimeout(() => {
       setSearch(searchInput);
+      setPage(1);
     }, 300);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [searchInput, setSearch]);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
-  const notesQuery = useQuery({
-    queryKey: ["notes", search, tag, currentPage],
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["notes", search, tag, page],
     queryFn: () =>
       fetchNotes({
         search,
-        tag,
-        page: currentPage,
+        tag: tag === "All" ? "" : (tag as NoteTag),
+        page,
         perPage: 12,
       }),
   });
 
-  const notes = notesQuery.data?.notes ?? [];
-  const totalPages = notesQuery.data?.totalPages ?? 1;
-
-  function updateRoute(nextSearch: string, nextTag: string, nextPage: number) {
-    const params = new URLSearchParams();
-
-    if (nextSearch) {
-      params.set("search", nextSearch);
-    }
-
-    if (nextTag && nextTag !== "All") {
-      params.set("tag", nextTag);
-    }
-
-    if (nextPage > 1) {
-      params.set("page", String(nextPage));
-    }
-
-    setPage(nextPage);
-    startTransition(() => {
-      router.push(`/notes${params.toString() ? `?${params.toString()}` : ""}`);
-    });
-  }
+  const notes = data?.notes ?? [];
+  const totalPages = data?.totalPages ?? 1;
 
   return (
-    <div className={css.layout}>
-      <section className={css.panel}>
-        <div className={css.filters}>
-          <SearchBox value={searchInput} onChange={setSearchInput} />
+    <div>
+      <SearchBox value={searchInput} onChange={setSearchInput} />
 
-          <label className={css.field}>
-            <span>Tag</span>
-            <select
-              className={css.select}
-              value={tag}
-              onChange={(event) => {
-                const nextTag = event.target.value as NoteTag;
-                setTag(nextTag);
-                updateRoute(search, nextTag, 1);
-              }}
-            >
-              {tags.map((tagOption) => (
-                <option key={tagOption} value={tagOption}>
-                  {tagOption}
-                </option>
-              ))}
-            </select>
-          </label>
+      <Link href="/notes/action/create">Create note</Link>
 
-          <div className={css.actions}>
-            <Link href="/notes/action/create" className={css.primaryButton}>
-              Create note
-            </Link>
-            <button
-              type="button"
-              className={css.secondaryButton}
-              onClick={() => {
-                setSearchInput("");
-                resetFilters();
-                updateRoute("", "All", 1);
-              }}
-            >
-              Reset
-            </button>
-          </div>
-        </div>
-      </section>
+      {isLoading && <p>Loading...</p>}
+      {isError && <p>Error loading notes.</p>}
 
-      <section className={css.panel}>
-        {notesQuery.isLoading ? <p>Loading notes...</p> : null}
-        {notesQuery.isError ? <p>Failed to load notes.</p> : null}
-        {!notesQuery.isLoading && !notesQuery.isError ? (
-          <>
-            {notes.length ? <NoteList notes={notes} /> : <p>No notes found.</p>}
-            {notes.length ? (
-              <Pagination
-                page={currentPage}
-                totalPages={totalPages}
-                onPrevious={() => updateRoute(search, tag, currentPage - 1)}
-                onNext={() => updateRoute(search, tag, currentPage + 1)}
-              />
-            ) : null}
-          </>
-        ) : null}
-      </section>
+      {!isLoading && !isError && (
+        <>
+          <NoteList notes={notes} />
+
+          {totalPages > 1 && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPrevious={() => setPage((prev) => prev - 1)}
+              onNext={() => setPage((prev) => prev + 1)}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }
