@@ -1,45 +1,107 @@
-import css from "./page.module.css";
-import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
-} from "@tanstack/react-query";
-import { fetchNotes } from "@/lib/api/serverApi";
-import { NotesClient } from "@/components/NotesClient/NotesClient";
+"use client";
 
-type NotesPageProps = {
-  searchParams: Promise<{
-    search?: string;
-    page?: string;
-    tag?: string;
-  }>;
-};
+import Image from "next/image";
+import { useState, type FormEvent } from "react";
+import { startTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import css from "./EditProfilePage.module.css";
+import { getErrorMessage, getMe, updateMe } from "@/lib/api/clientApi";
+import { useAuthStore } from "@/lib/store/authStore";
 
-export default async function NotesPage({ searchParams }: NotesPageProps) {
-  const params = await searchParams;
-  const search = params.search ?? "";
-  const tag = params.tag ?? "All";
-  const page = Number(params.page ?? "1");
-  const queryClient = new QueryClient();
+export default function EditProfilePage() {
+  const router = useRouter();
+  const storeUser = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
+  const [username, setUsername] = useState(storeUser?.username ?? "");
+  const [error, setError] = useState("");
 
-  await queryClient.prefetchQuery({
-    queryKey: ["notes", search, tag, page],
-    queryFn: () => fetchNotes({ search, tag, page, perPage: 12 }),
+  const userQuery = useQuery({
+    queryKey: ["me"],
+    queryFn: getMe,
+    initialData: storeUser ?? undefined,
   });
 
+  const updateMutation = useMutation({
+    mutationFn: updateMe,
+    onSuccess: (user) => {
+      setUser(user);
+      startTransition(() => {
+        router.replace("/profile");
+        router.refresh();
+      });
+    },
+    onError: (mutationError) => {
+      setError(getErrorMessage(mutationError));
+    },
+  });
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    updateMutation.mutate({ username: currentUsername });
+  }
+
+  if (userQuery.isLoading && !userQuery.data) {
+    return (
+      <main className={css.mainContent}>
+        <div className={css.profileCard}>Loading profile...</div>
+      </main>
+    );
+  }
+
+  const user = userQuery.data;
+  const currentUsername = username || user?.username || "";
+
+  if (!user) {
+    return null;
+  }
+
   return (
-    <main className={css.main}>
-      <div className="container">
-        <div className={css.header}>
-          <h1 className={css.title}>Your Notes</h1>
-          <p className={css.subtitle}>
-            Browse, create, filter, and delete notes inside your protected
-            workspace.
-          </p>
-        </div>
-        <HydrationBoundary state={dehydrate(queryClient)}>
-          <NotesClient initialSearch={search} initialTag={tag} page={page} />
-        </HydrationBoundary>
+    <main className={css.mainContent}>
+      <div className={css.profileCard}>
+        <h1 className={css.formTitle}>Edit Profile</h1>
+
+        <Image
+          src={user.avatar}
+          alt="User Avatar"
+          width={120}
+          height={120}
+          className={css.avatar}
+        />
+
+        <form className={css.profileInfo} onSubmit={handleSubmit}>
+          <div className={css.usernameWrapper}>
+            <label htmlFor="username">Username:</label>
+            <input
+              id="username"
+              type="text"
+              className={css.input}
+              value={currentUsername}
+              onChange={(event) => setUsername(event.target.value)}
+            />
+          </div>
+
+          <p>Email: {user.email}</p>
+          {error ? <p>{error}</p> : null}
+
+          <div className={css.actions}>
+            <button
+              type="submit"
+              className={css.saveButton}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Saving..." : "Save"}
+            </button>
+            <button
+              type="button"
+              className={css.cancelButton}
+              onClick={() => router.push("/profile")}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
       </div>
     </main>
   );
