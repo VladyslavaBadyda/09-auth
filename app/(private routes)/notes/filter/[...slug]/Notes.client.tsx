@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { startTransition } from "react";
+import { useEffect, useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import SearchBox from "@/components/SearchBox/SearchBox";
@@ -35,22 +34,26 @@ const tags: NoteTag[] = [
 
 export function Notes({ initialSearch, initialTag, page }: NotesProps) {
   const router = useRouter();
+
   const search = useNoteStore((state) => state.search);
   const tag = useNoteStore((state) => state.tag);
   const currentPage = useNoteStore((state) => state.page);
+
   const setSearch = useNoteStore((state) => state.setSearch);
   const setTag = useNoteStore((state) => state.setTag);
   const setPage = useNoteStore((state) => state.setPage);
   const resetFilters = useNoteStore((state) => state.resetFilters);
+
   const [searchInput, setSearchInput] = useState(initialSearch);
 
+  // 🔄 синхронізація з URL
   useEffect(() => {
-    router.refresh();
     setSearch(initialSearch);
     setTag((initialTag || "All") as NoteTag);
     setPage(page);
-  }, [initialSearch, initialTag, page, router, setPage, setSearch, setTag]);
+  }, [initialSearch, initialTag, page, setSearch, setTag, setPage]);
 
+  // ⏱ debounce пошуку
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       setSearch(searchInput);
@@ -89,6 +92,7 @@ export function Notes({ initialSearch, initialTag, page }: NotesProps) {
     }
 
     setPage(nextPage);
+
     startTransition(() => {
       router.push(`/notes${params.toString() ? `?${params.toString()}` : ""}`);
     });
@@ -98,6 +102,7 @@ export function Notes({ initialSearch, initialTag, page }: NotesProps) {
     <div className={css.layout}>
       <section className={css.panel}>
         <div className={css.filters}>
+          {/* ✅ тепер все ок */}
           <SearchBox value={searchInput} onChange={setSearchInput} />
 
           <label className={css.field}>
@@ -123,6 +128,7 @@ export function Notes({ initialSearch, initialTag, page }: NotesProps) {
             <Link href="/notes/action/create" className={css.primaryButton}>
               Create note
             </Link>
+
             <button
               type="button"
               className={css.secondaryButton}
@@ -139,21 +145,31 @@ export function Notes({ initialSearch, initialTag, page }: NotesProps) {
       </section>
 
       <section className={css.panel}>
-        {notesQuery.isLoading ? <p>Loading notes...</p> : null}
-        {notesQuery.isError ? <p>Failed to load notes.</p> : null}
-        {!notesQuery.isLoading && !notesQuery.isError ? (
+        {notesQuery.isLoading && <p>Loading notes...</p>}
+        {notesQuery.isError && <p>Failed to load notes.</p>}
+
+        {!notesQuery.isLoading && !notesQuery.isError && (
           <>
-            {notes.length ? <NoteList notes={notes} /> : <p>No notes found.</p>}
             {notes.length ? (
+              <NoteList notes={notes} />
+            ) : (
+              <p>No notes found.</p>
+            )}
+
+            {notes.length > 0 && (
               <Pagination
                 page={currentPage}
                 totalPages={totalPages}
-                onPrevious={() => updateRoute(search, tag, currentPage - 1)}
-                onNext={() => updateRoute(search, tag, currentPage + 1)}
+                onPrevious={() =>
+                  updateRoute(search, tag, currentPage - 1)
+                }
+                onNext={() =>
+                  updateRoute(search, tag, currentPage + 1)
+                }
               />
-            ) : null}
+            )}
           </>
-        ) : null}
+        )}
       </section>
     </div>
   );
